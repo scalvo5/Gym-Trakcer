@@ -515,7 +515,7 @@ function viewSettings() {
       <input id="file" type="file" accept="application/json,.json" hidden>
       <div class="row" style="margin-top:10px"><button class="btn sm" data-a="persist">Proteggi dati dalla pulizia automatica</button></div>
     </div>
-    <div class="card row between"><span class="small muted">Tracker Allenamenti · v2.0</span><button class="btn sm danger" data-a="wipe">Cancella tutto</button></div>`;
+    <div class="card row between"><span class="small muted">Tracker Allenamenti · v2.1</span><button class="btn sm danger" data-a="wipe">Cancella tutto</button></div>`;
   return h;
 }
 
@@ -548,6 +548,9 @@ function render() {
   document.getElementById('title').textContent = (tab === 'train' && S.active) ? 'Allenamento in corso' : TITLES[tab];
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
   main.innerHTML = views[tab]();
+  drawCharts();
+}
+function drawCharts() {
   if (tab === 'more' && more === 'progress' && progEx) drawChart(document.getElementById('chart'), exPoints(progEx, progMetric));
   if (tab === 'cardio') drawChart(document.getElementById('cchart'), views.cardio.chart || []);
   if (tab === 'body') {
@@ -555,7 +558,10 @@ function render() {
     drawChart(document.getElementById('bfchart'), S.bf.slice().sort((a, b) => a.date - b.date).map(x => ({x: x.date, y: x.pct})));
   }
 }
-let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (['more', 'cardio', 'body'].includes(tab)) render(); }, 200); });
+// Solo i grafici vengono ridisegnati, e solo se cambia la LARGHEZZA:
+// l'apertura della tastiera cambia l'altezza e non deve toccare i campi di testo.
+let rz, lastW = window.innerWidth;
+window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (window.innerWidth !== lastW) { lastW = window.innerWidth; drawCharts(); } }, 200); });
 
 let toastT;
 function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2600); }
