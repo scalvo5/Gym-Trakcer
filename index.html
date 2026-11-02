@@ -112,6 +112,18 @@ ul.clean li:first-child{border-top:0}
 .good{color:var(--good)}.bad{color:var(--warn)}
 .result{background:var(--raise);border-radius:12px;padding:12px;margin-top:12px;font-size:14.5px}
 .add{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.thumb{position:relative;width:64px;height:64px;border-radius:14px;background:#fff;overflow:hidden;flex:none;border:0;padding:0;cursor:zoom-in}
+.thumb img{position:absolute;inset:4px;width:calc(100% - 8px);height:calc(100% - 8px);object-fit:contain}
+.thumb img.t,#viewer img.t{animation:flip 2.4s ease-in-out infinite}
+.thumb.none{background:var(--raise);filter:none;cursor:default}
+.thumb.sm{width:46px;height:46px;border-radius:11px}
+@keyframes flip{0%,35%{opacity:0}50%,85%{opacity:1}100%{opacity:0}}
+@media (prefers-color-scheme: dark){.thumb,#viewer .pic{filter:invert(1) brightness(.9)}}
+#viewer{position:fixed;inset:0;z-index:40;background:color-mix(in srgb,var(--bg) 92%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;gap:14px}
+#viewer[hidden]{display:none}
+#viewer .pic{position:relative;width:min(86vw,420px);aspect-ratio:1;background:#fff;border-radius:24px}
+#viewer .pic img{position:absolute;inset:16px;width:calc(100% - 32px);height:calc(100% - 32px);object-fit:contain}
+.exrow{display:flex;gap:12px;align-items:flex-start}
 #toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 12px);transform:translateX(-50%);background:var(--text);color:var(--bg);padding:11px 18px;border-radius:999px;font-size:14px;font-weight:600;z-index:60;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center}
 #toast.show{opacity:1}
 #lock{position:fixed;inset:0;background:var(--bg);z-index:50;display:flex;align-items:center;justify-content:center;padding:24px}
@@ -123,6 +135,7 @@ ul.clean li:first-child{border-top:0}
 <header><h1 id="title">Home</h1></header>
 <main id="main"></main>
 <div id="toast"></div>
+<div id="viewer" hidden data-a="closeview"><div class="pic"><img id="vr" alt=""><img id="vt" class="t" alt=""></div><b id="vname" style="font-size:18px;text-align:center"></b><span class="small muted" id="vsub"></span><span class="small muted">Tocca per chiudere · illustrazione Everkinetic, CC BY-SA 4.0</span></div>
 
 <div id="lock" hidden>
   <div class="card">
@@ -165,7 +178,20 @@ const DB = {
   Core: ['Plank', 'Plank laterale', 'Crunch', 'Crunch al cavo', 'Dead bug', 'Bird dog', 'Pallof press', 'Sollevamento gambe', 'Ab wheel', 'Russian twist']
 };
 const SEC_EX = /plank|tenuta|wall sit|hollow/i;
+// Illustrazioni: Everkinetic (github.com/everkinetic/data), licenza CC BY-SA 4.0 — ritagliate e ridimensionate
+const IMG = {"panca piana con bilanciere": "0042", "panca piana con manubri": "0055", "spinte manubri su panca inclinata": "0061", "panca inclinata con bilanciere": "0043", "panca declinata": "0051", "chest press": "0066", "croci con manubri": "0056", "croci ai cavi": "0048", "dip alle parallele": "0054", "piegamenti a terra": "0077", "trazioni alla sbarra": "0087", "lat machine presa stretta": "0096", "pulley basso": "0025", "rematore con manubrio": "0024", "rematore t-bar": "0029", "pulldown a braccia tese": "0092", "pullover al cavo": "0092", "hyperextension": "0103", "military press": "0004", "alzate laterali con manubri": "0018", "alzate laterali al cavo basso": "0017", "alzate posteriori": "0023", "reverse pec deck": "0035", "tirate al mento": "0014", "curl con manubri": "0224", "curl con bilanciere": "0211", "curl a martello": "0227", "curl concentrato": "0220", "curl alla panca scott": "0239", "curl al cavo": "0212", "curl con bilanciere ez": "0226", "pushdown con corda": "0206", "pushdown con barra": "0205", "french press": "0183", "estensioni sopra la testa con manubrio": "0192", "estensioni sopra la testa al cavo": "0238", "panca presa stretta": "0049", "dip alla panca": "0162", "kickback": "0204", "squat con bilanciere": "0122", "front squat": "0138", "goblet squat": "0130", "hack squat": "0123", "leg press": "0127", "leg extension": "0142", "affondi camminati con manubri": "0121", "affondi bulgari": "0129", "step up": "0137", "stacchi rumeni": "0118", "stacco da terra": "0099", "leg curl sdraiato": "0117", "leg curl seduto": "0119", "leg curl in piedi": "0120", "good morning": "0101", "hip thrust": "0109", "glute bridge": "0109", "abductor machine": "0156", "kickback al cavo": "0112", "sumo squat con manubrio": "0152", "calf in piedi": "0282", "calf machine": "0282", "calf seduto": "0279", "calf alla leg press": "0273", "plank laterale": "0113", "crunch": "0291", "crunch al cavo": "0288", "sollevamento gambe": "0021", "ab wheel": "0286", "lat machine": "0093", "rematore con bilanciere": "0026", "shoulder press con manubri": "0038", "trazioni alla sbarra o lat machine": "0087", "chest press o dip alle parallele": "0066", "leg curl": "0117"};
 
+function imgId(name) {
+  const l = String(name || '').toLowerCase().trim();
+  if (IMG[l]) return IMG[l];
+  const first = l.split(' o ')[0].trim(); if (IMG[first]) return IMG[first];
+  const k = Object.keys(IMG).filter(x => l.startsWith(x)).sort((a, b) => b.length - a.length)[0];
+  return k ? IMG[k] : null;
+}
+function thumb(name, cls = '', placeholder = false) {
+  const id = imgId(name); if (!id) return placeholder ? `<span class="thumb ${cls} none" aria-hidden="true"></span>` : '';
+  return `<button class="thumb ${cls}" data-a="view" data-n="${esc(name)}" aria-label="Come si esegue"><img src="img/${id}-r.png" alt="" loading="lazy"><img class="t" src="img/${id}-t.png" alt="" loading="lazy"></button>`;
+}
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const num = v => { const n = parseFloat(String(v ?? '').replace(',', '.')); return isFinite(n) ? n : 0; };
@@ -266,7 +292,7 @@ function load() { try { const r = localStorage.getItem(KEY); S = normalize(r ? J
 function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { toast('Impossibile salvare i dati'); } }
 
 let tab = 'home', more = 'progress', preview = null, cardioType = 'corsa', progEx = null, progMetric = 'e1';
-let dbQ = '', dbM = 'Tutti', dbOpen = null;
+let dbQ = '', dbM = 'Tutti', dbOpen = null, editTpl = false;
 
 /* ---------------- calcoli ---------------- */
 function lastFor(name) {
@@ -430,12 +456,14 @@ views.train = () => {
   if (preview) {
     const t = S.templates.find(x => x.id === preview);
     if (t) {
-      return `<div class="row between" style="margin:4px 0 8px"><button class="btn sm ghost" data-a="back">← Schede</button><span class="small muted">${t.exercises.length} esercizi</span></div>
-        <h2 style="font-size:24px">${esc(t.name)}</h2>
+      return `<div class="row between" style="margin:4px 0 8px"><button class="btn sm ghost" data-a="back">← Schede</button><button class="btn sm ${editTpl ? 'dark' : 'ghost'}" data-a="edittpl">${editTpl ? 'Fatto' : 'Modifica'}</button></div>
+        <h2 style="font-size:24px">${esc(t.name)} <span class="small muted" style="font-weight:500">· ${t.exercises.length} esercizi</span></h2>
+        ${t.exercises.length ? '' : '<div class="card muted small">Scheda vuota: aggiungi esercizi dal database.</div>'}
         ${ssGroups(t.exercises).map(grp => `<div class="${grp.length > 1 ? 'ss' : ''}">${grp.length > 1 ? '<span class="lbl">Superset</span>' : ''}${grp.map(i => { const e = t.exercises[i], l = lastSummary(e.name);
-          return `<div class="card" style="padding:14px 16px"><div class="ex-name" style="font-size:15.5px">${esc(e.name)}</div><div class="meta">${targetTxt(e)}</div>
-          <div class="meta">${l ? `Ultima volta: ${l.sets} × ${l.repsTxt}${l.kg ? ' · ' + fmt(l.kg) + ' kg' : ''}` : 'Mai fatto'}</div></div>`; }).join('')}</div>`).join('')}
-        <div class="sp"></div><button class="btn primary block" data-a="start" data-t="${t.id}">Inizia allenamento</button>`;
+          return `<div class="card" style="padding:12px 14px"><div class="exrow">${thumb(e.name)}<div class="grow"><div class="ex-name" style="font-size:15.5px">${esc(e.name)}</div><div class="meta">${targetTxt(e)}</div>
+          <div class="meta">${l ? `Ultima volta: ${l.sets} × ${l.repsTxt}${l.kg ? ' · ' + fmt(l.kg) + ' kg' : ''}` : 'Mai fatto'}</div></div>
+          ${editTpl ? `<div style="display:flex;flex-direction:column;gap:6px"><button class="ico" data-a="pvrm" data-t="${t.id}" data-j="${i}" aria-label="Rimuovi">×</button>${i > 0 ? `<button class="ico" data-a="pvup" data-t="${t.id}" data-j="${i}" aria-label="Sposta su">↑</button>` : ''}</div>` : ''}</div></div>`; }).join('')}</div>`).join('')}
+        ${editTpl ? `<button class="btn ghost block" data-a="godbfor" data-t="${t.id}" style="margin-top:6px">+ Aggiungi dal database</button>` : `<div class="sp"></div><button class="btn primary block" data-a="start" data-t="${t.id}" ${t.exercises.length ? '' : 'disabled'}>Inizia allenamento</button>`}`;
     }
     preview = null;
   }
@@ -475,9 +503,9 @@ function exCard(exs, i) {
   const phS = l ? l.sets : (e.target ? e.target.sets : 3), phR = l ? l.reps : (e.target ? e.target.reps : unitLbl(e)), phK = l && l.kg ? fmt(l.kg) : 'kg';
   const n = Math.max(1, Math.min(12, Math.round(num(e.sets) || num(phS) || 3)));
   const showReps = e.perSet || ss;
-  let h = `<div class="card ex ${e.done ? 'done' : ''}"><div class="ex-top"><div class="grow"><div class="ex-name">${esc(e.name)}</div>
+  let h = `<div class="card ex ${e.done ? 'done' : ''}"><div class="ex-top"><div class="exrow grow">${thumb(e.name)}<div class="grow"><div class="ex-name">${esc(e.name)}</div>
     ${e.target ? `<div class="meta">Obiettivo ${targetTxt(e.target)}</div>` : ''}
-    <div class="meta">${l ? `Ultima volta ${l.sets} × ${l.repsTxt}${l.unit === 'sec' ? 's' : ''}${l.kg ? ' · ' + fmt(l.kg) + ' kg' : ''}` : 'Primo allenamento con questo esercizio'}</div></div>
+    <div class="meta">${l ? `Ultima volta ${l.sets} × ${l.repsTxt}${l.unit === 'sec' ? 's' : ''}${l.kg ? ' · ' + fmt(l.kg) + ' kg' : ''}` : 'Primo allenamento con questo esercizio'}</div></div></div>
     <button class="dots ${e.open ? 'on' : ''}" data-a="menu" data-ex="${i}" aria-label="Opzioni">⋯</button></div>
     <div class="trio"><div><span class="lbl">Serie</span><input inputmode="numeric" data-ex="${i}" data-f="sets" value="${esc(e.sets)}" placeholder="${esc(phS)}"></div>
     <div><span class="lbl">${e.unit === 'sec' ? 'Secondi' : 'Rip'}</span><input inputmode="numeric" data-ex="${i}" data-f="reps" value="${esc(e.reps)}" placeholder="${esc(phR)}"></div>
@@ -517,11 +545,12 @@ function dbListHtml() {
   list.forEach(x => (groups[x.muscle] = groups[x.muscle] || []).push(x));
   return Object.entries(groups).map(([m, xs]) => `<div class="lbl" style="margin:18px 0 2px">${m} · ${xs.length}</div><div class="card" style="padding:4px 16px">${xs.map(x => {
     const open = dbOpen === x.name, inT = S.templates.filter(t => t.exercises.some(e => e.name.toLowerCase() === x.name.toLowerCase())).map(t => t.name);
-    return `<div class="line" style="display:block"><div class="row between"><span class="grow"><span style="font-weight:550">${esc(x.name)}</span>${x.custom ? ' <span class="tag">tuo</span>' : ''}${inT.length ? `<br><span class="small muted">in ${inT.map(esc).join(', ')}</span>` : ''}</span>
+    return `<div class="line" style="display:block"><div class="row between" style="flex-wrap:nowrap">${thumb(x.name, 'sm', true)}<span class="grow"><span style="font-weight:550">${esc(x.name)}</span>${x.custom ? ' <span class="tag">tuo</span>' : ''}${inT.length ? `<br><span class="small muted">in ${inT.map(esc).join(', ')}</span>` : ''}</span>
       <button class="ico ${open ? 'on' : ''}" data-a="dbopen" data-n="${esc(x.name)}">${open ? '×' : '+'}</button></div>
-      ${open ? `<div class="add"><div class="small muted" style="margin-bottom:8px">Aggiungi a</div><div class="row">
+      ${open ? `<div class="add"><div class="small muted" style="margin-bottom:8px">Tocca una scheda per aggiungerlo o toglierlo</div><div class="row">
         ${S.active ? `<button class="btn sm primary" data-a="dbaddact" data-n="${esc(x.name)}" data-m="${x.muscle}">Allenamento in corso</button>` : ''}
-        ${S.templates.map(t => `<button class="btn sm" data-a="dbaddtpl" data-t="${t.id}" data-n="${esc(x.name)}" data-m="${x.muscle}">${esc(t.name)}</button>`).join('')}
+        ${S.templates.map(t => { const has = t.exercises.some(e => e.name.toLowerCase() === x.name.toLowerCase());
+          return `<button class="btn sm ${has ? 'dark' : ''}" data-a="dbaddtpl" data-t="${t.id}" data-n="${esc(x.name)}" data-m="${x.muscle}">${has ? '✓ ' : '+ '}${esc(t.name)}</button>`; }).join('')}
         ${x.custom ? `<button class="btn sm danger" data-a="cxdel" data-n="${esc(x.name)}">Elimina</button>` : ''}</div></div>` : ''}</div>`;
   }).join('')}</div>`).join('');
 }
@@ -648,7 +677,7 @@ function viewSettings() {
       <input id="file" type="file" accept="application/json,.json" hidden>
       <button class="btn sm ghost" data-a="persist" style="margin-top:12px">Proteggi dati dalla pulizia automatica</button>
     </div>
-    <div class="row between" style="margin-top:20px"><span class="small muted">Tracker Allenamenti · v3.0</span><button class="btn sm danger" data-a="wipe">Cancella tutto</button></div>`;
+    <div class="row between" style="margin-top:20px"><span class="small muted">Tracker Allenamenti · v3.1<br>Illustrazioni: <a href="https://github.com/everkinetic/data" style="color:inherit">Everkinetic</a>, CC BY-SA 4.0</span><button class="btn sm danger" data-a="wipe">Cancella tutto</button></div>`;
   return h;
 }
 
@@ -765,7 +794,13 @@ function moveAfter(exs, from, anchor) {
 }
 function addTo(tplId, name, muscle) {
   const t = S.templates.find(x => x.id === tplId); if (!t) return;
-  if (t.exercises.some(e => e.name.toLowerCase() === name.toLowerCase())) { toast('Già presente in ' + t.name); return; }
+  const j = t.exercises.findIndex(e => e.name.toLowerCase() === name.toLowerCase());
+  if (j >= 0) {
+    if (!confirm('Togliere "' + name + '" da ' + t.name + '?')) return;
+    t.exercises.splice(j, 1); if (t.exercises.length) t.exercises[t.exercises.length - 1].ss = false;
+    if (j > 0 && t.exercises[j - 1] && j === t.exercises.length) t.exercises[j - 1].ss = false;
+    save(); toast('Tolto da ' + t.name); return;
+  }
   t.exercises.push(tplEx({name, muscle, sets: 3, reps: SEC_EX.test(name) ? '45' : '10', rest: '90"'}));
   save(); toast('Aggiunto a ' + t.name);
 }
@@ -774,8 +809,25 @@ const actions = {
   gotrain() { tab = 'train'; render(); window.scrollTo(0, 0); },
   godb() { tab = 'db'; render(); window.scrollTo(0, 0); },
   gohistory() { tab = 'more'; more = 'history'; render(); window.scrollTo(0, 0); },
-  preview(b) { preview = b.dataset.t; tab = 'train'; render(); window.scrollTo(0, 0); },
-  back() { preview = null; render(); },
+  preview(b) { preview = b.dataset.t; editTpl = false; tab = 'train'; render(); window.scrollTo(0, 0); },
+  back() { preview = null; editTpl = false; render(); },
+  edittpl() { editTpl = !editTpl; render(); },
+  pvrm(b) {
+    const t = S.templates.find(x => x.id === b.dataset.t), j = +b.dataset.j; if (!t) return;
+    if (!confirm('Togliere "' + t.exercises[j].name + '" da ' + t.name + '?')) return;
+    t.exercises.splice(j, 1); if (t.exercises.length) t.exercises[t.exercises.length - 1].ss = false;
+    save(); render(); toast('Esercizio tolto');
+  },
+  pvup(b) { const t = S.templates.find(x => x.id === b.dataset.t), j = +b.dataset.j; if (t && j > 0) { [t.exercises[j - 1], t.exercises[j]] = [t.exercises[j], t.exercises[j - 1]]; save(); render(); } },
+  godbfor() { tab = 'db'; dbOpen = null; render(); window.scrollTo(0, 0); toast('Tocca + su un esercizio e scegli la scheda'); },
+  view(b) {
+    const id = imgId(b.dataset.n); if (!id) return;
+    document.getElementById('vr').src = 'img/' + id + '-r.png'; document.getElementById('vt').src = 'img/' + id + '-t.png';
+    document.getElementById('vname').textContent = b.dataset.n;
+    document.getElementById('vsub').textContent = 'Posizione di partenza e di arrivo, alternate';
+    document.getElementById('viewer').hidden = false;
+  },
+  closeview() { document.getElementById('viewer').hidden = true; },
   start(b) { const t = S.templates.find(x => x.id === b.dataset.t); if (t) startSession(t.name, t.exercises); },
   startfree() { startSession('Allenamento libero', []); },
   menu(b) { const e = getEx(b); e.open = !e.open; save(); render(); },
@@ -907,7 +959,7 @@ function backupName() { return 'tracker-backup-' + isoDay(Date.now()) + '.json';
 /* ---------------- eventi ---------------- */
 document.addEventListener('click', e => {
   const nb = e.target.closest('nav button');
-  if (nb) { tab = nb.dataset.tab; if (tab !== 'train') preview = null; render(); window.scrollTo(0, 0); return; }
+  if (nb) { tab = nb.dataset.tab; if (tab !== 'train') { preview = null; editTpl = false; } render(); window.scrollTo(0, 0); return; }
   const b = e.target.closest('[data-a]');
   if (b && !b.disabled && actions[b.dataset.a]) actions[b.dataset.a](b);
 });
